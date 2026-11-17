@@ -3,5 +3,6 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
-  <Project Path="ProjetStéganography.vcxproj" />
+  <Project Path="../XORTests/XORTests.vcxproj" Id="2da44b42-7509-403b-9b91-9c1931c1c0a9" />
+  <Project Path="ProjetStéganography.vcxproj" Id="c64ad4b6-7e69-4358-9af5-063f671d8e61" />
 </Solution>
