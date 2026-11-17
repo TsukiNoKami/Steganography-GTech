@@ -3,5 +3,5 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
-  <Project Path="ProjetStéganography.vcxproj" />
+  <Project Path="ProjetStéganography.vcxproj" Id="c64ad4b6-7e69-4358-9af5-063f671d8e61" />
 </Solution>
