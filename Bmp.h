@@ -11,6 +11,11 @@ public:
     bool load(const std::string& path);
     bool save(const std::string& path) const;
 
+    std::size_t capacityBits() const;
+
+    bool writeBit(std::size_t index, std::uint8_t bit);
+    bool readBit(std::size_t index, std::uint8_t& bit) const;
+
 private:
     std::vector<std::uint8_t> bytes;
 

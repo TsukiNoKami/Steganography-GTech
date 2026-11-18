@@ -141,3 +141,45 @@ std::size_t Bmp::componentOffset(std::size_t componentIndex) const
         + row * rowStride
         + positionInRow;
 }
+
+std::size_t Bmp::capacityBits() const
+{
+    if (bytes.empty())
+    {
+        return 0;
+    }
+
+    return static_cast<std::size_t>(width)
+        * static_cast<std::size_t>(height)
+        * 3;
+}
+
+bool Bmp::writeBit(std::size_t index, std::uint8_t bit)
+{
+    if (index >= capacityBits() || bit > 1)
+    {
+        return false;
+    }
+
+    const std::size_t offset = componentOffset(index); // permet de sauter les octets de padding
+
+    bytes[offset] = static_cast<std::uint8_t>(
+        (bytes[offset] & 0xFEu) | bit
+        );
+
+    return true;
+}
+
+bool Bmp::readBit(std::size_t index, std::uint8_t& bit) const
+{
+    if (index >= capacityBits()) // empeche de lire ou modifier une composante hors de l'image
+    {
+        return false;
+    }
+
+    const std::size_t offset = componentOffset(index);
+
+    bit = bytes[offset] & 1u; // Conserve uniquement le dernier bit de l'octet.
+
+    return true;
+}
