@@ -1,4 +1,5 @@
 #include "XOR.h"
+#include <iostream>
 
 std::string XOR::xorCrypt(const std::string& message, const std::string& key)
 {
@@ -25,4 +26,16 @@ std::string XOR::xorDecrypt(const std::string& encryptedMessage, const std::stri
         result[i] = encryptedMessage[i] ^ key[i % key.size()];
     }
     return result;
+}
+
+void XOR::testXOR() {
+	std::string message;
+	std::cout << "Enter the message to encrypt: ";
+	std::cin >> message;
+	std::string key;
+	std::cout << "Enter the key for encryption/decryption: ";
+	std::cin >> key;
+    std::string crypted = xorCrypt(message, key);
+	std::cout << "Encrypted message: " << crypted << std::endl;
+	std::cout << "Decrypted message: " << xorDecrypt(crypted, key) << std::endl;
 }
