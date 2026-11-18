@@ -141,7 +141,6 @@
   <ItemGroup>
     <ClCompile Include="Bmp.cpp" />
     <ClCompile Include="ProjetStéganography.cpp" />
-    <ClCompile Include="Tests.cpp" />
     <ClCompile Include="XOR.cpp" />
   </ItemGroup>
   <ItemGroup>

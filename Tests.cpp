@@ -1,6 +1,5 @@
 #pragma once
 #include "XOR.h"
-#include "XOR.cpp"
 #include <iostream>
 
 void test() {

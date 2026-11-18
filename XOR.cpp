@@ -1,6 +1,6 @@
 #include "XOR.h"
 
-std::string xorCrypt(const std::string& message, const std::string& key)
+std::string XOR::xorCrypt(const std::string& message, const std::string& key)
 {
     if (key.empty())
     {
@@ -13,11 +13,10 @@ std::string xorCrypt(const std::string& message, const std::string& key)
     {
         result[i] = message[i] ^ key[i % key.size()];
     }
-
     return result;
 }
 
-std::string xorDecrypt(const std::string& encryptedMessage, const std::string& key) {
+std::string XOR::xorDecrypt(const std::string& encryptedMessage, const std::string& key) {
     if (key.empty()) {
         return "";
     }
