@@ -16,3 +16,14 @@ std::string xorCrypt(const std::string& message, const std::string& key)
 
     return result;
 }
+
+std::string xorDecrypt(const std::string& encryptedMessage, const std::string& key) {
+    if (key.empty()) {
+        return "";
+    }
+    std::string result = encryptedMessage;
+    for (size_t i = 0; i < encryptedMessage.size(); i++) {
+        result[i] = encryptedMessage[i] ^ key[i % key.size()];
+    }
+    return result;
+}
