@@ -1,4 +1,5 @@
 #include "Steganography.h"
+#include "XOR.h"
 #include <cstdint>
 #include <limits>
 #include <utility>
@@ -48,7 +49,7 @@ namespace
     }
 }
 
-bool embedMessage(Bmp& image, const std::string& message)
+bool embedMessage(Bmp& image, const std::string& message, const std::string& key)
 {
     const std::size_t availableBytes =
         image.capacityBits() / 8;
@@ -61,7 +62,17 @@ bool embedMessage(Bmp& image, const std::string& message)
         return false;
     }
 
+    XOR xor1;
+    std::string payload = message;
+    std::uint8_t xorFlag = 0;
     std::size_t position = 0;
+    
+    
+    if (!key.empty())
+    {
+        payload = xor1.xorCrypt(message, key);
+        xorFlag = 1;
+    }
 
     // Signature du message
     const std::uint8_t signature[4] = {
@@ -94,13 +105,13 @@ bool embedMessage(Bmp& image, const std::string& message)
     }
 
     // Indicateur XOR : 0 = message non chiffre
-    if (!writeByte(image, position, 0u))
+    if (!writeByte(image, position, xorFlag))
     {
         return false;
     }
 
     // Ecriture du message
-    for (unsigned char character : message)
+    for (unsigned char character : payload)
     {
         if (!writeByte(image, position, character))
         {
@@ -111,7 +122,7 @@ bool embedMessage(Bmp& image, const std::string& message)
     return true;
 }
 
-bool extractMessage(const Bmp& image, std::string& message)
+bool extractMessage(const Bmp& image, std::string& message, const std::string& key)
 {
     const std::size_t availableBytes =
         image.capacityBits() / 8;
@@ -157,7 +168,12 @@ bool extractMessage(const Bmp& image, std::string& message)
     // Lecture de l'indicateur XOR
     std::uint8_t xorFlag = 0;
 
-    if (!readByte(image, position, xorFlag) || xorFlag != 0)
+    if (!readByte(image, position, xorFlag) || xorFlag > 1)
+    {
+        return false;
+    }
+    
+    if (key.empty() && xorFlag == 1)
     {
         return false;
     }
@@ -182,6 +198,12 @@ bool extractMessage(const Bmp& image, std::string& message)
         }
 
         extracted.push_back(static_cast<char>(byte));
+    }
+
+    if (xorFlag == 1)
+    {
+        XOR xor1;
+        extracted = xor1.xorDecrypt(extracted, key);
     }
 
     message = std::move(extracted);

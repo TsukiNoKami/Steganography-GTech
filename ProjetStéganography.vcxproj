@@ -140,11 +140,15 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Bmp.cpp" />
+    <ClCompile Include="CommandLine.cpp" />
     <ClCompile Include="ProjetStéganography.cpp" />
     <ClCompile Include="Steganography.cpp" />
+    <ClCompile Include="XOR.cpp" />
+    <ClCompile Include="XOR.h" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Bmp.h" />
+    <ClInclude Include="CommandLine.h" />
     <ClInclude Include="Steganography.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
