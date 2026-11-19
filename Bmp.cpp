@@ -18,18 +18,15 @@ std::uint32_t readLittleEndian(
     return result;
 }
 
-bool Bmp::load(const std::string& path)
+bool readFile(const std::string& path, std::vector<std::uint8_t>& data)
 {
     FILE* file = std::fopen(path.c_str(), "rb");
-
     if (file == nullptr)
     {
         return false;
     }
 
-    std::vector<std::uint8_t> data;
-    std::uint8_t buffer[4096];
-
+    std::uint8_t buffer[500];
     std::size_t bytesRead;
 
     do
@@ -37,20 +34,21 @@ bool Bmp::load(const std::string& path)
         bytesRead = std::fread(buffer, 1, sizeof(buffer), file);
         data.insert(data.end(), buffer, buffer + bytesRead);
     } while (bytesRead == sizeof(buffer));
+    bool readOk = std::ferror(file) == 0;
+    bool closeOk = std::fclose(file) == 0;
 
-    const bool readOk = std::ferror(file) == 0;
-    std::fclose(file);
+    return readOk && closeOk;
+}
 
-    if (!readOk || data.size() < 54 ||
+bool validateHeader(const std::vector<std::uint8_t>& data)
+{
+    if (data.size() < 54 ||
         data[0] != 'B' || data[1] != 'M')
     {
         return false;
     }
 
-    const std::uint32_t offset = readLittleEndian(data, 10, 4);
     const std::uint32_t headerSize = readLittleEndian(data, 14, 4);
-    const std::uint32_t imageWidth = readLittleEndian(data, 18, 4);
-    const std::uint32_t imageHeight = readLittleEndian(data, 22, 4);
     const std::uint32_t planes = readLittleEndian(data, 26, 2);
     const std::uint32_t bitsPerPixel = readLittleEndian(data, 28, 2);
     const std::uint32_t compression = readLittleEndian(data, 30, 4);
@@ -62,7 +60,13 @@ bool Bmp::load(const std::string& path)
     {
         return false;
     }
+    return true;
+}
 
+bool validateDimensions(std::uint32_t imageWidth,
+    std::uint32_t imageHeight, std::uint32_t offset,
+    std::size_t fileSize)
+{
     if (imageWidth == 0 || imageHeight == 0 ||
         imageWidth > std::numeric_limits<std::int32_t>::max() ||
         imageHeight > std::numeric_limits<std::int32_t>::max())
@@ -70,30 +74,44 @@ bool Bmp::load(const std::string& path)
         return false;
     }
 
-    if (offset < 54 || offset > data.size())
+    if (offset < 54 || offset > fileSize)
     {
         return false;
     }
 
+    return true;
+}
+
+std::uint64_t calculateStride(std::uint32_t imageWidth)
+{
     const std::uint64_t rowBytes =
         static_cast<std::uint64_t>(imageWidth) * 3;
 
-    const std::uint64_t stride =
-        ((rowBytes + 3) / 4) * 4;
+    // Arrondit la taille de la ligne au multiple de 4 superieur.
+    return ((rowBytes + 3) / 4) * 4;
+}
 
-    const std::uint64_t pixelDataSize =
-        stride * imageHeight;
-
-    if (pixelDataSize > data.size() - offset)
+bool Bmp::load(const std::string& path)
+{
+    std::vector<std::uint8_t> data;
+    if (!readFile(path, data) || !validateHeader(data))
     {
         return false;
     }
 
+    const std::uint32_t offset = readLittleEndian(data, 10, 4);
+    const std::uint32_t imageWidth = readLittleEndian(data, 18, 4);
+    const std::uint32_t imageHeight = readLittleEndian(data, 22, 4);
+    const std::uint64_t stride = calculateStride(imageWidth);
+    if (!validateDimensions(imageWidth, imageHeight, offset, data.size()) ||
+        stride * imageHeight > data.size() - offset)
+    {
+        return false;
+    }
     width = static_cast<std::int32_t>(imageWidth);
     height = static_cast<std::int32_t>(imageHeight);
     pixelOffset = offset;
     rowStride = static_cast<std::size_t>(stride);
-
     bytes = std::move(data);
     return true;
 }
@@ -106,15 +124,12 @@ bool Bmp::save(const std::string& path) const
     }
 
     FILE* file = std::fopen(path.c_str(), "wbx");
-
     if (file == nullptr)
     {
         return false;
     }
 
-    const std::size_t written =
-        std::fwrite(bytes.data(), 1, bytes.size(), file);
-
+    const std::size_t written = std::fwrite(bytes.data(), 1, bytes.size(), file);
     const int closeResult = std::fclose(file);
 
     if (written != bytes.size() || closeResult != 0)
@@ -161,7 +176,8 @@ bool Bmp::writeBit(std::size_t index, std::uint8_t bit)
         return false;
     }
 
-    const std::size_t offset = componentOffset(index); // permet de sauter les octets de padding
+    // Permet de sauter les octets de padding.
+    const std::size_t offset = componentOffset(index);
 
     bytes[offset] = static_cast<std::uint8_t>(
         (bytes[offset] & 0xFEu) | bit
@@ -172,7 +188,8 @@ bool Bmp::writeBit(std::size_t index, std::uint8_t bit)
 
 bool Bmp::readBit(std::size_t index, std::uint8_t& bit) const
 {
-    if (index >= capacityBits()) // empeche de lire ou modifier une composante hors de l'image
+    // Empeche la lecture d'une composante hors de l'image.
+    if (index >= capacityBits())
     {
         return false;
     }
