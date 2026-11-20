@@ -7,6 +7,7 @@
 namespace
 {
     constexpr std::size_t HEADER_BYTES = 9;
+    constexpr std::uint8_t SIGNATURE[4] = { 'S', 'T', 'E', 'G' };
 
     bool writeByte(Bmp& image, std::size_t& position,
         std::uint8_t value)
@@ -49,68 +50,50 @@ namespace
     }
 }
 
-bool embedMessage(Bmp& image, const std::string& message, const std::string& key)
+bool canEmbed(const Bmp& image, std::size_t messageSize)
 {
-    const std::size_t availableBytes =
-        image.capacityBits() / 8;
+    const std::size_t availableBytes = image.capacityBits() / 8;
 
     if (availableBytes < HEADER_BYTES ||
-        message.size() > availableBytes - HEADER_BYTES ||
-        message.size() >
-        std::numeric_limits<std::uint32_t>::max())
+        messageSize > availableBytes - HEADER_BYTES ||
+        messageSize > std::numeric_limits<std::uint32_t>::max())
     {
         return false;
     }
+    return true;
+}
 
-    XOR xor1;
-    std::string payload = message;
-    std::uint8_t xorFlag = 0;
-    std::size_t position = 0;
-    
-    
-    if (!key.empty())
-    {
-        payload = xor1.xorCrypt(message, key);
-        xorFlag = 1;
-    }
-
-    // Signature du message
-    const std::uint8_t signature[4] = {
-        'S', 'T', 'E', 'G'
-    };
-
-    for (std::uint8_t byte : signature)
+bool writeSignature(Bmp& image, std::size_t& position)
+{
+    for (std::uint8_t byte : SIGNATURE)
     {
         if (!writeByte(image, position, byte))
         {
             return false;
         }
     }
+    return true;
+}
 
-    // Longueur du message sur 4 octets (little-endian)
-    const std::uint32_t length =
-        static_cast<std::uint32_t>(message.size());
-
+bool writeLength(Bmp& image, std::size_t& position,
+    std::uint32_t length)
+{
     for (unsigned i = 0; i < 4; ++i)
     {
         const std::uint8_t byte =
-            static_cast<std::uint8_t>(
-                (length >> (8 * i)) & 0xFFu
-                );
+            static_cast<std::uint8_t>((length >> (8 * i)) & 0xFFu);
 
         if (!writeByte(image, position, byte))
         {
             return false;
         }
     }
+    return true;
+}
 
-    // Indicateur XOR : 0 = message non chiffre
-    if (!writeByte(image, position, xorFlag))
-    {
-        return false;
-    }
-
-    // Ecriture du message
+bool writePayload(Bmp& image, std::size_t& position,
+    const std::string& payload)
+{
     for (unsigned char character : payload)
     {
         if (!writeByte(image, position, character))
@@ -118,40 +101,27 @@ bool embedMessage(Bmp& image, const std::string& message, const std::string& key
             return false;
         }
     }
-
     return true;
 }
 
-bool extractMessage(const Bmp& image, std::string& message, const std::string& key)
+bool checkSignature(const Bmp& image, std::size_t& position)
 {
-    const std::size_t availableBytes =
-        image.capacityBits() / 8;
-
-    if (availableBytes < HEADER_BYTES)
-    {
-        return false;
-    }
-
-    std::size_t position = 0;
-
-    // Verification de la signature
-    const std::uint8_t signature[4] = {
-        'S', 'T', 'E', 'G'
-    };
-
-    for (std::uint8_t expected : signature)
+    for (std::uint8_t expected : SIGNATURE)
     {
         std::uint8_t actual = 0;
 
-        if (!readByte(image, position, actual) ||
-            actual != expected)
+        if (!readByte(image, position, actual) || actual != expected)
         {
             return false;
         }
     }
+    return true;
+}
 
-    // Lecture de la longueur sur 4 octets
-    std::uint32_t length = 0;
+bool readLength(const Bmp& image, std::size_t& position,
+    std::uint32_t& length)
+{
+    length = 0;
 
     for (unsigned i = 0; i < 4; ++i)
     {
@@ -164,30 +134,14 @@ bool extractMessage(const Bmp& image, std::string& message, const std::string& k
 
         length |= static_cast<std::uint32_t>(byte) << (8 * i);
     }
+    return true;
+}
 
-    // Lecture de l'indicateur XOR
-    std::uint8_t xorFlag = 0;
-
-    if (!readByte(image, position, xorFlag) || xorFlag > 1)
-    {
-        return false;
-    }
-    
-    if (key.empty() && xorFlag == 1)
-    {
-        return false;
-    }
-
-    // Verification de la longueur annoncee
-    if (length > availableBytes - HEADER_BYTES)
-    {
-        return false;
-    }
-
-    std::string extracted;
+bool readPayload(const Bmp& image, std::size_t& position,
+    std::uint32_t length, std::string& extracted)
+{
     extracted.reserve(length);
 
-    // Reconstruction du message
     for (std::uint32_t i = 0; i < length; ++i)
     {
         std::uint8_t byte = 0;
@@ -199,14 +153,56 @@ bool extractMessage(const Bmp& image, std::string& message, const std::string& k
 
         extracted.push_back(static_cast<char>(byte));
     }
+    return true;
+}
 
+bool embedMessage(Bmp& image, const std::string& message, const std::string& key)
+{
+    if (!canEmbed(image, message.size()))
+    {
+        return false;
+    }
+
+    XOR xor1;
+    std::string payload = message;
+    std::uint8_t xorFlag = 0;
+    std::size_t position = 0;
+
+    if (!key.empty())
+    {
+        payload = xor1.xorCrypt(message, key);
+        xorFlag = 1;
+    }
+
+    const std::uint32_t length = static_cast<std::uint32_t>(message.size());
+
+    return writeSignature(image, position) &&
+        writeLength(image, position, length) &&
+        writeByte(image, position, xorFlag) &&
+        writePayload(image, position, payload);
+}
+
+bool extractMessage(const Bmp& image, std::string& message, const std::string& key)
+{
+    std::size_t position = 0;
+    std::uint32_t length = 0;
+    std::uint8_t xorFlag = 0;
+    if (!canEmbed(image, 0) || !checkSignature(image, position) ||
+        !readLength(image, position, length) || !readByte(image, position, xorFlag) ||
+        xorFlag > 1 || !canEmbed(image, length) || (xorFlag == 1 && key.empty()))
+    {
+        return false;
+    }
+    std::string extracted;
+    if (!readPayload(image, position, length, extracted))
+    {
+        return false;
+    }
     if (xorFlag == 1)
     {
         XOR xor1;
         extracted = xor1.xorDecrypt(extracted, key);
     }
-
     message = std::move(extracted);
-
     return true;
 }

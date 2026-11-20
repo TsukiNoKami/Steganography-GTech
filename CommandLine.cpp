@@ -8,8 +8,8 @@ void printHelp()
 {
     std::cout << "Utilisation :\n";
     std::cout << "  programme --help\n";
-    std::cout << "  programme embed source.bmp destination.bmp \"message\"\n";
-    std::cout << "  programme extract image.bmp\n";
+    std::cout << "  programme embed source.bmp destination.bmp \"message\" [--key \"cle\"]\n";
+    std::cout << "  programme extract image.bmp [--key \"cle\"]\n";
 }
 
 int runApplication(int argc, char* argv[])

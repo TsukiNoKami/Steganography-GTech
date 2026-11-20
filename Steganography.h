@@ -1,6 +1,5 @@
 #pragma once
 
-#include "XOR.h"
 #include "Bmp.h"
 #include <string>
 
