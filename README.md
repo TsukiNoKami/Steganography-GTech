@@ -1,5 +1,3 @@
-[README_Steganography_GTech_final.md](https://github.com/user-attachments/files/35193537/README_Steganography_GTech_final.md)
-
 **Andy Donero & Benjamin Bodin**  
 **Gaming Campus — Novembre 2026 — C++20**
 
